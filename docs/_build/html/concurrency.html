@@ -1,0 +1,664 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Concurrency and Threads &mdash; HW 0.0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="HW 0.0.1 documentation" href="index.html" />
+    <link rel="prev" title="Credits" href="credits.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="credits.html" title="Credits"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">HW 0.0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="concurrency-and-threads">
+<h1>Concurrency and Threads<a class="headerlink" href="#concurrency-and-threads" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="threads-vs-processes">
+<h2>Threads vs Processes<a class="headerlink" href="#threads-vs-processes" title="Permalink to this headline">¶</a></h2>
+<ul>
+<li><dl class="first docutils">
+<dt>Traditional Operating Systems have Processes</dt>
+<dd><ul class="first last simple">
+<li>Each process has its own address space</li>
+<li>Single thread of control</li>
+<li>When a process makes a system call, the process blocks until the call completes.</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>In many situations it is desirable to have multiple threads of control for:</dt>
+<dd><ul class="first last">
+<li><p class="first">Explicit parallelism - to take advantage of multiple processors</p>
+</li>
+<li><dl class="first docutils">
+<dt>To allow computation to continue while waiting for system calls to return</dt>
+<dd><ul class="first last simple">
+<li>example: one thread reads a file into a buffer, another thread compresses the buffer, and a final thread writes out a compressed file.</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p class="first">To reduce the cost of context switching</p>
+</li>
+<li><p class="first">Implicit parallelism - to keep a single processor busy</p>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+<div class="section" id="what-are-processes-threads">
+<h2>What are Processes, Threads?<a class="headerlink" href="#what-are-processes-threads" title="Permalink to this headline">¶</a></h2>
+<ul>
+<li><dl class="first docutils">
+<dt>Processes have:</dt>
+<dd><ul class="first simple">
+<li>Program counter</li>
+<li>Stack</li>
+<li>Register set</li>
+<li>An exclusive virtual address space</li>
+<li>Sandboxing from other process except to the extent that the process participates in IPC</li>
+</ul>
+<div class="last figure align-center">
+<img alt="Process Memory Layout" src="_images/memory_layout.png" />
+</div>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Threads:</dt>
+<dd><ul class="first simple">
+<li>Threads can be thought of (and are often referred to as) lightweight processes</li>
+<li>Provide multiple threads of control</li>
+<li>Have multiple program counters</li>
+<li>Have multiple stacks</li>
+<li>One parent process, the virtual address space is shared across processes</li>
+<li>Each thread runs sequentially</li>
+<li>In a given process with N threads, 0-i threads may be blocked, and 0-k threads are runnable or running.</li>
+</ul>
+<div class="last figure align-center">
+<img alt="Threaded Memory Layout" src="_images/memory_layout_multithreaded.png" />
+</div>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+<div class="section" id="common-threading-use-cases">
+<h2>Common Threading Use Cases<a class="headerlink" href="#common-threading-use-cases" title="Permalink to this headline">¶</a></h2>
+<ul>
+<li><dl class="first docutils">
+<dt>Client / Server - ex: file servers:</dt>
+<dd><ul class="first simple">
+<li>One thread listens on a network socket for clients</li>
+<li>When a client connects, a new thread is spawned to handle the request. This permits several clients to connect to the file server at one time because each request is handled by a separate thread of execution.</li>
+<li>To send the file data, two threads can be used the first can read from the file on disk and the second can write the read buffers to the socket.</li>
+</ul>
+<div class="last figure align-center">
+<img alt="Client-Server Thread Model" src="figures/concurrency/client_server.png" />
+</div>
+</dd>
+</dl>
+</li>
+<li><p class="first">Example Client-Server - a TCP echo server</p>
+</li>
+</ul>
+<ul>
+<li><dl class="first docutils">
+<dt>Parallel computation:</dt>
+<dd><ul class="first simple">
+<li>An algorithm is designed to solve some small part or subproblem of a larger problem</li>
+<li>To the extent that the subproblems are not inter-dependent, they can be executed in parallel</li>
+<li>Multiple threads can work against a common task queue.</li>
+</ul>
+<div class="last figure align-center">
+<img alt="Parallel Thread Model" src="figures/concurrency/parallel_threads.png" />
+</div>
+</dd>
+</dl>
+</li>
+</ul>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">The focus of this course is on <em>distributed</em> (not <em>parallel</em>) systems. Nevertheless, you may find that you want to take advantage of parallel computing in your work. We encourage you to read Christopher and Thiruvathukal, <a class="reference external" href="http://hpjpc.googlecode.com">http://hpjpc.googlecode.com</a>, which contains many examples of parallel algorithms in Java. You may also find LÃ¤ufer, Lewis, and Thiruvathukal&#8217;s Scala workshop tutorial helpful. See <a class="reference external" href="http://scalaworkshop.cs.luc.edu">http://scalaworkshop.cs.luc.edu</a>.</p>
+</div>
+<ul class="simple">
+<li>Example Parallel Computation - factoring an integer</li>
+</ul>
+<ul>
+<li><dl class="first docutils">
+<dt>Pipeline processing:</dt>
+<dd><ul class="first simple">
+<li>An algorithm must be executed in several stages that depend upon each other.</li>
+<li>For example if there are three stages, then three threads can be launched for each of the stages. As the first thread completes some part of the total work, it can pass it to a queue for the second stage to be processed by the second thread. At this time, the first thread and second thread can work on their own stages in parallel. The same continues to the third thread for the third stage of computation.</li>
+</ul>
+<div class="last figure align-center">
+<img alt="Pipeline Thread Model" src="figures/concurrency/pipeline_threads.png" />
+</div>
+</dd>
+</dl>
+</li>
+<li><p class="first">Example Pipeline Processing - file compression</p>
+</li>
+</ul>
+<ul class="simple">
+<li>Example Pipeline Processing - a more concise and language friendly file compression</li>
+</ul>
+<ul class="simple">
+<li>Helper class - ThreadedList</li>
+</ul>
+</div>
+<div class="section" id="mutual-exclusion">
+<h2>Mutual Exclusion<a class="headerlink" href="#mutual-exclusion" title="Permalink to this headline">¶</a></h2>
+<ul>
+<li><p class="first">Mutual exclusion is a general problem that applies to both processes and threads.</p>
+</li>
+<li><dl class="first docutils">
+<dt>Processes</dt>
+<dd><ul class="first last simple">
+<li>Occurs with processes that share resources such as shared memory, files, and other resources that must be updated atomically</li>
+<li>When not otherwise shared, the address space of a process is protected against reads/writes by other processes</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Threads</dt>
+<dd><ul class="first last simple">
+<li>Because threads share more resources such as having a shared process heap, there are more resources that need to be potentially protected</li>
+<li>Because the address space is shared among threads in one process, cooperation and coordination is required for threads that read from and write to shared data structures</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p class="first">When mutual exclusion is achieved, atomic operations on shared data structures are guaranteed to be atomic and not interrupted by other threads.</p>
+</li>
+</ul>
+</div>
+<div class="section" id="tools-for-achieving-mutual-exclusion">
+<h2>Tools for Achieving Mutual Exclusion<a class="headerlink" href="#tools-for-achieving-mutual-exclusion" title="Permalink to this headline">¶</a></h2>
+<ul>
+<li><dl class="first docutils">
+<dt>Mutex</dt>
+<dd><ul class="first last simple">
+<li>Has two operations: Lock() and Unlock()</li>
+<li>Has two states: Locked or Unlocked</li>
+<li>A lock can be acquired before entering a critical region and unlock can be called when leaving the critical region</li>
+<li>If all critical regions are covered by a mutex, then mutual exclusion has been achieved and operations can be said to be atomic</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Semaphore</dt>
+<dd><ul class="first last">
+<li><p class="first">Has two operations: Up() and Down()</p>
+</li>
+<li><p class="first">Has N states: a counter that has a value from 0 - N</p>
+</li>
+<li><p class="first">Up() increases the value by 1</p>
+</li>
+<li><p class="first">Down() decreases the value by 1</p>
+</li>
+<li><p class="first">When the semaphore has a value &gt; 0, then a thread of execution can enter the critical region</p>
+</li>
+<li><p class="first">When the semaphore has a value = 0, then a thread is blocked</p>
+</li>
+<li><dl class="first docutils">
+<dt>The purpose of a semaphore is used to:</dt>
+<dd><ul class="first last simple">
+<li>Limit the number of threads that enter a critical region</li>
+<li>Limit the number of items in a queue between two threads working in a pipeline processing pattern.</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Monitor</dt>
+<dd><ul class="first last simple">
+<li>Has four operations: Lock(), Unlock(), Pulse(), Wait()</li>
+<li>Allows for more complicated and user-coded conditions for entering critical regions</li>
+<li>The locking semantics are more complicated for the simplest cases, but can express more complicated mutual exclusion cases in simpler ways than can semaphores or mutexes</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Additional details may be found in the Operating Systems course</dt>
+<dd><ul class="first last simple">
+<li>Mutual Exclusion - <a class="reference external" href="http://osdi.cs.courseclouds.com/html/mutualexclusion.html">http://osdi.cs.courseclouds.com/html/mutualexclusion.html</a></li>
+<li>Deadlock - <a class="reference external" href="http://osdi.cs.courseclouds.com/html/deadlock.html">http://osdi.cs.courseclouds.com/html/deadlock.html</a></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+<div class="section" id="mutex-example-java">
+<h2>Mutex Example/Java<a class="headerlink" href="#mutex-example-java" title="Permalink to this headline">¶</a></h2>
+<p>This code example shows how to implement a classic mutex, a.k.a. a Lock, in Java.</p>
+<p>These examples come from <a class="reference external" href="http://hpjpc.googlecode.com">http://hpjpc.googlecode.com</a> by Christopher and Thiruvathukal.</p>
+</div>
+<div class="section" id="semaphore-example">
+<h2>Semaphore Example<a class="headerlink" href="#semaphore-example" title="Permalink to this headline">¶</a></h2>
+<p>This shows how to implement a counting semaphore in the Java programming language.</p>
+</div>
+<div class="section" id="barrier">
+<h2>Barrier<a class="headerlink" href="#barrier" title="Permalink to this headline">¶</a></h2>
+<p>This shows how to implement a barrier, which is a synchronization mechanism for awaiting
+a specified number of threads before processing can continue. Once all threads have arrived,
+processing can continue.</p>
+</div>
+<div class="section" id="deadlock-a-classic-problem">
+<h2>Deadlock - a classic problem<a class="headerlink" href="#deadlock-a-classic-problem" title="Permalink to this headline">¶</a></h2>
+<p>A classic problem in computer science and one that is often studied in operating systems
+to show the hazards of working with shared, synchronized state, is the <em>dining philosophers problem</em>.
+We won&#8217;t describe the entire problem here but you can read <a class="reference external" href="http://en.wikipedia.org/wiki/Dining_philosophers_problem">http://en.wikipedia.org/wiki/Dining_philosophers_problem</a>.</p>
+<p>our &#8220;solution&#8221; has the following design:</p>
+<ul class="simple">
+<li>Fork: A class to represent the forks shared by adjacent philosophers at the table.</li>
+<li>Diner0: A class used to represent a philosopher. The philosopher does three things a philosopher normally does: think(), sleep(), and eat().</li>
+<li>Diners0: A class used to represent all of the diners seated at the table with their shared forks. This is where the concurrency takes place.</li>
+</ul>
+</div>
+<div class="section" id="fork">
+<h2>Fork<a class="headerlink" href="#fork" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="diner0">
+<h2>Diner0<a class="headerlink" href="#diner0" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="diners0">
+<h2>Diners0<a class="headerlink" href="#diners0" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="diners1-eliminating-deadlock-with-resource-enumeration">
+<h2>Diners1 - eliminating deadlock with resource enumeration<a class="headerlink" href="#diners1-eliminating-deadlock-with-resource-enumeration" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="execution-with-deadlock">
+<h2>Execution - With Deadlock<a class="headerlink" href="#execution-with-deadlock" title="Permalink to this headline">¶</a></h2>
+<p>If you have Java and Gradle installed on your computer, you can try these out!</p>
+<p>Make sure you have the HPJPC source code:</p>
+<div class="highlight-python"><div class="highlight"><pre>hg clone https://bitbucket.org/loyolachicagocs_books/hpjpc-source-java
+</pre></div>
+</div>
+<p>The following Gradle task in <tt class="docutils literal"><span class="pre">build.gradle</span></tt> shows how to run Diners0&#8217;s <tt class="docutils literal"><span class="pre">main()</span></tt> method:</p>
+<p>To build:</p>
+<div class="highlight-python"><div class="highlight"><pre>gradle build
+</pre></div>
+</div>
+<p>To run:</p>
+<div class="highlight-python"><div class="highlight"><pre>gradle Diners0
+</pre></div>
+</div>
+<p>If you run this, you will notice that deadlock ensues fairly quick. The diners get
+into a state where they are waiting on each others&#8217; forks in a cycle:</p>
+<div class="highlight-python"><div class="highlight"><pre>$ gradle Diners0
+:compileJava UP-TO-DATE
+:processResources UP-TO-DATE
+:classes UP-TO-DATE
+:Diners0
+tet4t 023et 12ett 0et40 e134e
+et340 12ett 12ett 123et e1340
+0234e e23e4 1tt40 t23et ett40
+t23et 1ett0 12et0 t23et 1tt40
+1t34e 12et0 1et40 12e30 t234e
+12e30 1et40 tetet et3t4 1t3e4
+1e240 1tte4 12tt0 t2ete t2tt0
+11e3t et3t0 t234e e1340 11t40
+1t340 0e24e tttet tt34e 12e3t
+1t24e 0t3e4 tet4e 12340 12340
+12340 12340 12340 12340 12340
+12340 12340 12340 12340 12340
+12340 12340 12340 12340 12340
+12340 12340 12340 12340 12340
+12340 12340 12340 12340 12340
+12340 12340 12340 12340 12340
+12340 12340 12340 12340 12340
+12340 12340 12340 12340 12340
+12340 12340 12340 12340 12340
+12340 12340 12340 12340 12340
+12340 12340 12340 12340 12340
+12340 12340 12340 12340 12340
+12340 12340 12340 12340 12340
+12340 12340 12340 12340 12340
+12340 12340 12340 12340 12340
+</pre></div>
+</div>
+</div>
+<div class="section" id="deadlock-free-version">
+<h2>Deadlock-Free Version<a class="headerlink" href="#deadlock-free-version" title="Permalink to this headline">¶</a></h2>
+<p>Diners1 has a similar Gradle task:</p>
+<p>Run:</p>
+<div class="highlight-python"><div class="highlight"><pre>gradle Diners1
+</pre></div>
+</div>
+<p>Output:</p>
+<div class="highlight-python"><div class="highlight"><pre>$ gradle Diners1
+:compileJava UP-TO-DATE
+:processResources UP-TO-DATE
+:classes UP-TO-DATE
+:Diners1
+ttttt 1t240 t2et4 1et4t tt2e4
+1e2et 1et4t e13e0 tt3e4 ettt0
+t2te0 0e24e 1ettt e1e3t t1te4
+0tt4e 1etet e13tt tt24e 1t3et
+tettt 0ttet ete3t tt33e 0et4e
+1ete0 01t3t 0tt3e 1e240 te2te
+e1et0 1e2et 02e3e t1t3t 1t3tt
+02ete 1et4t e13et et33t 02tte
+1ett0 et3t0 ete30 t2e3e et3e0
+0et4e ettt0 0e2e4 01t4e 1e2et
+...
+12e30 tet3e 1etet 0ttt0 0etet
+1et4t e2tt4 tt3e4 0t3et 12et0
+1ett0 e1tet 12e30 1tttt etet0
+tettt 1e2t0 0t3e4 tettt ttttt
+023e4 ttttt 023e4 1e2d0 e13d0
+02ed4 e2edt 1etd0 et3d0 1tedt
+02ede 0etde 1etd0 t2tdt t2ede
+01tde et2d0 112dt tedde tedd4
+tedde 02dd0 1edd0 etdd0 1tddt
+1eddt 1eddt 01dde 0tdd0 t2dde
+t2ddt eddd4 tddde tddd4 tdddt
+0ddde eddd0 tdddt 0ddde eddd0
+tddd4 eddd0 0ddde 0ddde eddd0
+eddd0 0ddde 0ddde tddd4 0dddt
+eddd0 tddd4 1dddd 0dddd 1dddd
+tdddd tdddd ddddd
+BUILD SUCCESSFUL
+
+Total time: 18.426 secs
+</pre></div>
+</div>
+<p>The diners, as desired, end up finishing their meal after some time.</p>
+<p>We assume they have moved over to the bar or found a nice place to have dessert.</p>
+</div>
+<div class="section" id="common-data-structures-in-concurrent-programming">
+<h2>Common Data Structures in Concurrent Programming<a class="headerlink" href="#common-data-structures-in-concurrent-programming" title="Permalink to this headline">¶</a></h2>
+<ul>
+<li><dl class="first docutils">
+<dt>Bound Buffer</dt>
+<dd><ul class="first simple">
+<li>Makes use of a mutex and semaphore internally</li>
+<li>Defines a maximum number of items that exist in the bound buffer&#8217;s queue.</li>
+<li>Has two operations: Enqueue() and Dequeue()</li>
+<li>Enqueue() - enqueues items in the data structure. If the enqueue operation would cause the bound buffer to exceed the maximum, the Enqueue() call will block until another thread dequeues at least one item.</li>
+<li>Dequeue() - dequeues an item from the data structure. If there are zero items in the queue, Dequeue() will block until another thread enqueues an item in the data structure</li>
+<li>Bound buffers are used to make sure that when one thread is producing work for a second thread, that if one thread is faster or slower than the other, that they appropriately wait to some extent for each other.</li>
+</ul>
+<div class="last figure align-center">
+<img alt="Bound Buffer" src="figures/concurrency/bound_buffer.png" />
+</div>
+</dd>
+</dl>
+</li>
+<li><p class="first">Example Bound Buffer</p>
+</li>
+</ul>
+</div>
+<div class="section" id="design-considerations">
+<h2>Design Considerations<a class="headerlink" href="#design-considerations" title="Permalink to this headline">¶</a></h2>
+<ul>
+<li><dl class="first docutils">
+<dt>Threading requires the support of the operating system - a threading library / package is needed</dt>
+<dd><ul class="first last simple">
+<li>In Windows, this is a part of the Windows SDK and .NET Framework</li>
+<li>In Linux and Mac OSX, PThreads provides threading</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Thread usage and creation</dt>
+<dd><ul class="first last">
+<li><p class="first">Threads can be started and stopped on demand or a thread pool can be used</p>
+</li>
+<li><dl class="first docutils">
+<dt>Starting threads dynamically:</dt>
+<dd><ul class="first last simple">
+<li>Has some cost associated with asking the OS to create and schedule the thread</li>
+<li>It can be architecturally challenging to maintain an appropriate number of threads across software components</li>
+<li>This is overall the most simple approach</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Thread Pools</dt>
+<dd><ul class="first last simple">
+<li>The number of threads can be defined at compile time or when the program is first launched</li>
+<li>Instead of creating a new thread, the program acquires a thread and passes a function pointer to the thread to execute</li>
+<li>When the given task is completed, the thread is returned to the pool.</li>
+<li>This approach does not have the overhead of creating / destroying threads as threads are reused.</li>
+<li>This approach often requires library support or some additional code.</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>The total number of threads</dt>
+<dd><ul class="first last simple">
+<li>Having several hundred threads on a system with an order of magnitude fewer cores can cause you to run into trouble.</li>
+<li>If a majority of those threads are runnable, then the program will spend most of its time context switching between those threads rather than actually getting work done.</li>
+<li>If such a system is dynamically starting and stopping threads, then the program will most likely spend most of its time creating and destroying threads.</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+<div class="section" id="kernel-threads-vs-user-mode-threads">
+<h2>Kernel Threads vs User Mode Threads<a class="headerlink" href="#kernel-threads-vs-user-mode-threads" title="Permalink to this headline">¶</a></h2>
+<ul>
+<li><dl class="first docutils">
+<dt>There are two types of threads:</dt>
+<dd><ul class="first">
+<li><dl class="first docutils">
+<dt>Kernel Threads</dt>
+<dd><p class="first last">-Supported by modern operating systems
+-Scheduled by the operating system</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>User Threads</dt>
+<dd><p class="first last">-Supported by almost everything
+-Scheduled by the process</p>
+</dd>
+</dl>
+</li>
+</ul>
+<div class="last figure align-center">
+<img alt="Kernel and User Mode Threads" src="figures/concurrency/kernel_user_threads.png" />
+</div>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Context switching:</dt>
+<dd><ul class="first last simple">
+<li>Kernel threads have a higher overhead because the scheduler must be invoked and there might be a time lag before a runnable thread is actually executed.</li>
+<li>Kernel threads often perform very well because the operating system has more information about the resource state of the computer and can make better global scheduling decisions than can a program</li>
+<li>User-mode threads can context switch with fewer overall operations, but scheduling them is guess-work.</li>
+<li>User mode threads can be created more rapidly because new stacks and scheduler entries do not need to be created by the operating system</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Where are user-mode threads used?</dt>
+<dd><ul class="first last simple">
+<li>In systems without kernel mode threads</li>
+<li>When the number of threads a system needs is in the hundreds or thousands (user-mode threads scale better in these scenarios)</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Where are kernel-mode threads used?</dt>
+<dd><ul class="first last simple">
+<li>When the number of threads is not very high (less than 10 per core)</li>
+<li>When blocking calls are involved (user-mode thread libraries usually have separate I/O libraries)</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+<div class="section" id="concurrent-file-copy-example">
+<h2>Concurrent File Copy Example<a class="headerlink" href="#concurrent-file-copy-example" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>FileCopy0: The sequential version</li>
+<li>FileCopy1: The concurrent version</li>
+</ul>
+</div>
+<div class="section" id="sequential-file-copy">
+<h2>Sequential File Copy<a class="headerlink" href="#sequential-file-copy" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="concurrent-file-copy-organization">
+<h2>Concurrent File Copy Organization<a class="headerlink" href="#concurrent-file-copy-organization" title="Permalink to this headline">¶</a></h2>
+<p>Quick overview of the various classes:</p>
+<ul class="simple">
+<li>Pool: Maintains a list of buffers that can be used for allocating/freeing blocks of data without triggering new (or dispose) repeatedly.</li>
+<li>Buffer: Used as a shared object for reading and writing blocks of data (via the FileCopyReader1 and FileCopyWriter1 classes)</li>
+<li>BufferQueue: Used to queue up blocks as they are read or written. This allows for varying speeds of reader and writer, subject to the number of blocks available in the Pool.</li>
+<li>FileCopyReader1: Used to run the reader thread.</li>
+<li>FileCopyWriter1: Used to run the writer thread.</li>
+<li>FileCopy1: Used to act as a drop in replacement for FileCopy0. Sets up the reader and writer threads and then joins with both when the reading/writing are completed.</li>
+</ul>
+</div>
+<div class="section" id="execution">
+<h2>Execution<a class="headerlink" href="#execution" title="Permalink to this headline">¶</a></h2>
+<p>You can run FileCopy0 and FileCopy1 by using the corresponding Gradle tasks.</p>
+<p>As shown, there are two properties you can set: <tt class="docutils literal"><span class="pre">fc0_src</span></tt> and <tt class="docutils literal"><span class="pre">fc0_dest</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre>gradle FileCopy0 -Pfc0_src=inputFile -Pfc0_dest=outputFile
+</pre></div>
+</div>
+<p>You can also run FileCopy1 (the same parameter names are used):</p>
+<div class="highlight-python"><div class="highlight"><pre>gradle FileCopy1 -Pfc0_src=inputFile -Pfc0_dest=outputFile
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Concurrency and Threads</a><ul>
+<li><a class="reference internal" href="#threads-vs-processes">Threads vs Processes</a></li>
+<li><a class="reference internal" href="#what-are-processes-threads">What are Processes, Threads?</a></li>
+<li><a class="reference internal" href="#common-threading-use-cases">Common Threading Use Cases</a></li>
+<li><a class="reference internal" href="#mutual-exclusion">Mutual Exclusion</a></li>
+<li><a class="reference internal" href="#tools-for-achieving-mutual-exclusion">Tools for Achieving Mutual Exclusion</a></li>
+<li><a class="reference internal" href="#mutex-example-java">Mutex Example/Java</a></li>
+<li><a class="reference internal" href="#semaphore-example">Semaphore Example</a></li>
+<li><a class="reference internal" href="#barrier">Barrier</a></li>
+<li><a class="reference internal" href="#deadlock-a-classic-problem">Deadlock - a classic problem</a></li>
+<li><a class="reference internal" href="#fork">Fork</a></li>
+<li><a class="reference internal" href="#diner0">Diner0</a></li>
+<li><a class="reference internal" href="#diners0">Diners0</a></li>
+<li><a class="reference internal" href="#diners1-eliminating-deadlock-with-resource-enumeration">Diners1 - eliminating deadlock with resource enumeration</a></li>
+<li><a class="reference internal" href="#execution-with-deadlock">Execution - With Deadlock</a></li>
+<li><a class="reference internal" href="#deadlock-free-version">Deadlock-Free Version</a></li>
+<li><a class="reference internal" href="#common-data-structures-in-concurrent-programming">Common Data Structures in Concurrent Programming</a></li>
+<li><a class="reference internal" href="#design-considerations">Design Considerations</a></li>
+<li><a class="reference internal" href="#kernel-threads-vs-user-mode-threads">Kernel Threads vs User Mode Threads</a></li>
+<li><a class="reference internal" href="#concurrent-file-copy-example">Concurrent File Copy Example</a></li>
+<li><a class="reference internal" href="#sequential-file-copy">Sequential File Copy</a></li>
+<li><a class="reference internal" href="#concurrent-file-copy-organization">Concurrent File Copy Organization</a></li>
+<li><a class="reference internal" href="#execution">Execution</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="credits.html"
+                        title="previous chapter">Credits</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/concurrency.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="credits.html" title="Credits"
+             >previous</a> |</li>
+        <li><a href="index.html">HW 0.0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Gruvion.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>
